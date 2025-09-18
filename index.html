@@ -182,47 +182,49 @@
             document.getElementById('customer-approval-content').classList.remove('hidden');
         }
 
-        async function toggleRecording() {
-            const recordBtn = document.getElementById('record-btn');
-            const recordBtnText = document.getElementById('record-btn-text');
-            const audioPlayback = document.getElementById('audio-playback');
-            const recordingStatus = document.getElementById('recording-status');
+       // ADD THESE TWO NEW FUNCTIONS
+async function startRecording(context = 'customer') {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showError('Audio recording is not supported on this browser.');
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        recordedAudioBlob = null;
 
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            } else {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    mediaRecorder.start();
+        mediaRecorder.addEventListener("dataavailable", event => {
+            audioChunks.push(event.data);
+        });
 
-                    recordBtn.classList.remove('bg-gray-600', 'hover:bg-gray-700');
-                    recordBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-                    recordBtnText.textContent = 'Stop Recording';
-                    recordingStatus.textContent = "Recording...";
-                    audioPlayback.classList.add('hidden');
-                    
-                    audioChunks = [];
-                    mediaRecorder.addEventListener("dataavailable", event => {
-                        audioChunks.push(event.data);
-                    });
+        mediaRecorder.addEventListener("stop", () => {
+            recordedAudioBlob = new Blob(audioChunks, { 'type' : 'audio/webm' });
+            const audioUrl = URL.createObjectURL(recordedAudioBlob);
+            const audioPlaybackEl = document.getElementById('customer-audio-playback');
+            audioPlaybackEl.innerHTML = `<audio controls src="${audioUrl}" class="w-full"></audio>`;
+            stream.getTracks().forEach(track => track.stop()); // Stop mic access
+        });
 
-                    mediaRecorder.addEventListener("stop", () => {
-                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const audioUrl = URL.createObjectURL(recordedAudioBlob);
-                        audioPlayback.src = audioUrl;
-                        audioPlayback.classList.remove('hidden');
-                        recordBtn.classList.add('hidden');
-                        recordingStatus.textContent = "Recording complete. You can play it back before submitting.";
-                        stream.getTracks().forEach(track => track.stop());
-                    });
-                } catch (err) {
-                    console.error("Error accessing microphone:", err);
-                    showError("Could not access microphone. Please grant permission in your browser settings.");
-                    recordingStatus.textContent = "Microphone access denied.";
-                }
-            }
-        }
+        mediaRecorder.start();
+        document.getElementById('customer-record-btn').classList.add('hidden');
+        document.getElementById('customer-stop-record-btn').classList.remove('hidden');
+        document.getElementById('recording-status').textContent = 'Recording...';
+        document.getElementById('customer-audio-playback').innerHTML = ''; // Clear previous playback
+    } catch (err) {
+        showError('Microphone access was denied.');
+        console.error("Mic Error:", err);
+    }
+}
+
+function stopRecording(context = 'customer') {
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+        document.getElementById('customer-record-btn').classList.add('hidden'); // Stays hidden
+        document.getElementById('customer-stop-record-btn').classList.add('hidden');
+        document.getElementById('recording-status').textContent = 'Recording stopped. Play back audio below.';
+    }
+}
         
         async function submitCustomerApproval() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -295,3 +297,4 @@
     </script>
 </body>
 </html>
+
