@@ -35,7 +35,7 @@
         .app-main { @apply p-4 max-w-4xl mx-auto space-y-6; }
         .form-input { @apply w-full rounded-lg border-[var(--border-color)] text-base shadow-sm transition-colors focus:border-[var(--primary-color)] focus:ring focus:ring-[var(--primary-color)] focus:ring-opacity-50; }
         .btn-primary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-[var(--primary-color)] text-[var(--text-on-primary)] font-bold py-3 px-4 shadow-sm hover:bg-[var(--primary-hover)] transition-all duration-300 transform hover:scale-[1.02]; }
-        .btn-secondary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-red-600 text-white font-bold py-3 px-4 shadow-sm hover:bg-red-700 transition-colors; }
+        .btn-secondary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-gray-600 text-white font-bold py-3 px-4 shadow-sm hover:bg-gray-700 transition-colors; }
     </style>
 </head>
 <body>
@@ -150,7 +150,6 @@
                 const originalComplaints = JSON.parse(data.complaint || '[]');
                 const allSuggestions = JSON.parse(data.suggested || '[]');
                 
-                // Combine both lists into one, removing duplicates
                 const allItems = [...new Set([...originalComplaints, ...allSuggestions])];
 
                 if (allItems.length > 0) {
@@ -198,8 +197,8 @@
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.start();
 
-                    recordBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-                    recordBtn.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                    recordBtn.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+                    recordBtn.classList.add('bg-red-600', 'hover:bg-red-700');
                     recordBtnText.textContent = 'Stop Recording';
                     recordingStatus.textContent = "Recording...";
                     audioPlayback.classList.add('hidden');
@@ -231,6 +230,12 @@
             const reportId = urlParams.get('report_id');
             if (!reportId) return showError('Invalid report ID.');
 
+            const submitBtn = document.querySelector('#customer-submit-section button');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span>Submitting...</span>`;
+            
             const allApprovedItems = [];
             document.querySelectorAll('#cust-suggestions-list input[type="checkbox"]:checked').forEach(checkbox => {
                 allApprovedItems.push(checkbox.value);
@@ -238,12 +243,6 @@
             
             const feedbackText = document.getElementById('customer-feedback-text').value.trim();
             let audioUrlToUpload = null;
-            
-            const submitBtn = document.querySelector('#customer-submit-section button');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `
-                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span>Submitting...</span>`;
 
             if (recordedAudioBlob) {
                 try {
@@ -297,4 +296,3 @@
     </script>
 </body>
 </html>
-
