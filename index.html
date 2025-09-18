@@ -219,10 +219,12 @@ async function startRecording(context = 'customer') {
     }
 }
 
+// REPLACE your existing stopRecording function with this one
 function stopRecording(context = 'customer') {
-    if (mediaRecorder) {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Immediately stop the mic
         mediaRecorder.stop();
-        document.getElementById('customer-record-btn').classList.add('hidden'); // Stays hidden
+        document.getElementById('customer-record-btn').classList.add('hidden'); // Stays hidden to prevent re-record
         document.getElementById('customer-stop-record-btn').classList.add('hidden');
         document.getElementById('recording-status').textContent = 'Recording stopped. Play back audio below.';
     }
@@ -299,5 +301,6 @@ function stopRecording(context = 'customer') {
     </script>
 </body>
 </html>
+
 
 
