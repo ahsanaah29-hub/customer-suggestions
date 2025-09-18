@@ -35,7 +35,6 @@
         .app-main { @apply p-4 max-w-4xl mx-auto space-y-6; }
         .form-input { @apply w-full rounded-lg border-[var(--border-color)] text-base shadow-sm transition-colors focus:border-[var(--primary-color)] focus:ring focus:ring-[var(--primary-color)] focus:ring-opacity-50; }
         .btn-primary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-[var(--primary-color)] text-[var(--text-on-primary)] font-bold py-3 px-4 shadow-sm hover:bg-[var(--primary-hover)] transition-all duration-300 transform hover:scale-[1.02]; }
-        .btn-secondary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-gray-600 text-white font-bold py-3 px-4 shadow-sm hover:bg-gray-700 transition-colors; }
     </style>
 </head>
 <body>
@@ -64,22 +63,29 @@
                 </div>
 
                 <div class="card">
-                    <h2 class="text-xl font-bold mb-3">1. Review and Approve Services</h2>
-                    <p class="text-sm text-gray-500 -mt-2 mb-4">Please select all services you wish to approve. Your original requests are pre-selected for your convenience.</p>
-                    <div id="cust-suggestions-list" class="space-y-3 border-t pt-4">
-                        </div>
+                    <h2 class="text-xl font-bold mb-3">1. Your Original Complaints</h2>
+                    <div id="cust-complaints-list" class="space-y-2 border-t pt-4 text-gray-700">
+                        <!-- Customer's original complaints will be listed here -->
+                    </div>
                 </div>
 
                 <div class="card">
-                    <h2 class="text-xl font-bold mb-3">2. Additional Feedback (Optional)</h2>
+                    <h2 class="text-xl font-bold mb-3">2. Mechanic's Suggested Repairs</h2>
+                    <p class="text-sm text-gray-500 -mt-2 mb-4">Please review and select the additional services you would like to approve.</p>
+                    <div id="cust-suggestions-list" class="space-y-3 border-t pt-4">
+                        <!-- Mechanic's suggestions checklist will be injected here by JS -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-3">3. Additional Feedback (Optional)</h2>
                      <textarea id="customer-feedback-text" class="form-input" rows="4" placeholder="If you have any other concerns or requests, please write them here..."></textarea>
                 </div>
-
                 <div class="card">
-                    <h2 class="text-xl font-bold mb-3">3. Record a Voice Note (Optional)</h2>
+                    <h2 class="text-xl font-bold mb-3">4. Record a Voice Note (Optional)</h2>
                     <p class="text-sm text-gray-500 -mt-2 mb-4">If it's easier, you can record a voice message for our team.</p>
                     <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                        <button id="record-btn" onclick="toggleRecording()" class="btn-secondary">
+                        <button id="record-btn" onclick="toggleRecording()" class="flex items-center justify-center gap-2 w-full rounded-lg bg-red-600 text-white font-bold py-3 px-4 shadow-sm hover:bg-red-700 transition-colors">
                             <span class="material-symbols-outlined">mic</span>
                             <span id="record-btn-text">Start Recording</span>
                         </button>
@@ -106,7 +112,6 @@
 
     <script>
         const { createClient } = supabase;
-        // IMPORTANT: Use the same Supabase URL and anon Key as your main application
         const supabaseUrl = 'https://gfylsjfljnwyomfouwvs.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmeWxzamZsam53eW9tZm91d3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MDc5MTYsImV4cCI6MjA3Mjk4MzkxNn0.hMvLvCDVaFtq0rXToHGOJPSFe-QnJ6_S-MYsI0d5zOs';
         const sb = createClient(supabaseUrl, supabaseKey);
@@ -124,7 +129,7 @@
 
         async function initializeCustomerView(reportId) {
             const { data, error } = await sb.from('reports')
-                .select(`complaint, suggested, approved, vehicles(*, vehicle_models(brand, model))`)
+                .select(`complaint, suggested, vehicles(*, vehicle_models(brand, model))`)
                 .eq('id', reportId)
                 .single();
 
@@ -132,51 +137,47 @@
                 document.getElementById('customer-loading').innerHTML = `<p class="text-red-500 font-bold">Error: Could not load report details. The link may be invalid or expired.</p>`;
                 return;
             }
-            
-            if (data.approved !== null && data.approved !== '[]') {
-                document.getElementById('customer-loading').style.display = 'none';
-                document.getElementById('customer-approval-content').classList.add('hidden');
-                document.getElementById('customer-thank-you').classList.remove('hidden');
-                return;
-            }
 
             document.getElementById('cust-vehicle-no').textContent = data.vehicles.vehicle_no;
             document.getElementById('cust-vehicle-name').textContent = `${data.vehicles.vehicle_models.brand} ${data.vehicles.vehicle_models.model}`;
             
+            const complaintsList = document.getElementById('cust-complaints-list');
             const suggestionsList = document.getElementById('cust-suggestions-list');
+            complaintsList.innerHTML = '';
             suggestionsList.innerHTML = '';
 
             try {
-                const originalComplaints = JSON.parse(data.complaint || '[]');
+                const complaints = JSON.parse(data.complaint || '[]');
                 const allSuggestions = JSON.parse(data.suggested || '[]');
                 
-                const allItems = [...new Set([...originalComplaints, ...allSuggestions])];
+                // Display original complaints as a simple list.
+                if (complaints.length > 0) {
+                     complaints.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'p-3 bg-gray-50 rounded-lg text-sm flex items-center gap-2';
+                        div.innerHTML = `<span class="material-symbols-outlined text-gray-500">label</span><span>${item}</span>`;
+                        complaintsList.appendChild(div);
+                    });
+                } else {
+                    complaintsList.innerHTML = '<p class="text-sm text-gray-500">No initial complaints were registered.</p>';
+                }
 
-                if (allItems.length > 0) {
-                     allItems.forEach(item => {
-                        const isOriginalComplaint = originalComplaints.includes(item);
+                // Filter out the mechanic's suggestions that are not already part of the original complaints.
+                const mechanicSuggestions = allSuggestions.filter(sugg => !complaints.includes(sugg));
+
+                if (mechanicSuggestions.length > 0) {
+                    mechanicSuggestions.forEach(item => {
                         const label = document.createElement('label');
-                        
-                        const bgColor = isOriginalComplaint ? 'bg-gray-50' : 'bg-blue-50';
-                        const textColor = isOriginalComplaint ? 'text-gray-800' : 'text-blue-800';
-                        const tag = isOriginalComplaint 
-                            ? `<span class="text-xs text-gray-500">(Your Request)</span>`
-                            : `<span class="text-xs text-blue-600">(Mechanic Suggestion)</span>`;
-
-                        label.className = `flex items-center gap-3 p-3 ${bgColor} rounded-lg cursor-pointer hover:bg-gray-100 transition-colors`;
-                        label.innerHTML = `
-                            <input type="checkbox" value="${item}" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${isOriginalComplaint ? 'checked' : ''}>
-                            <span class="flex-1 font-medium ${textColor}">${item}</span>
-                            ${tag}
-                        `;
+                        label.className = 'flex items-center gap-3 p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors';
+                        label.innerHTML = `<input type="checkbox" value="${item}" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"><span class="flex-1 font-medium text-blue-800">${item}</span>`;
                         suggestionsList.appendChild(label);
                     });
                 } else {
-                    suggestionsList.innerHTML = '<p class="text-sm text-gray-500">No services have been suggested for this job.</p>';
+                     suggestionsList.innerHTML = '<p class="text-sm text-gray-500">No additional repairs were suggested by the mechanic.</p>';
                 }
 
             } catch (e) {
-                suggestionsList.innerHTML = '<p class="text-sm text-red-500">Could not parse service lists.</p>';
+                complaintsList.innerHTML = '<p class="text-sm text-red-500">Could not parse service lists.</p>';
             }
 
             document.getElementById('customer-loading').style.display = 'none';
@@ -197,8 +198,8 @@
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.start();
 
-                    recordBtn.classList.remove('bg-gray-600', 'hover:bg-gray-700');
-                    recordBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                    recordBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    recordBtn.classList.add('bg-gray-600', 'hover:bg-gray-700');
                     recordBtnText.textContent = 'Stop Recording';
                     recordingStatus.textContent = "Recording...";
                     audioPlayback.classList.add('hidden');
@@ -225,73 +226,74 @@
             }
         }
         
-        async function submitCustomerApproval() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const reportId = urlParams.get('report_id');
-            if (!reportId) return showError('Invalid report ID.');
-
-            const submitBtn = document.querySelector('#customer-submit-section button');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `
-                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span>Submitting...</span>`;
-            
-            const allApprovedItems = [];
-            document.querySelectorAll('#cust-suggestions-list input[type="checkbox"]:checked').forEach(checkbox => {
-                allApprovedItems.push(checkbox.value);
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
             });
-            
-            const feedbackText = document.getElementById('customer-feedback-text').value.trim();
-            let audioUrlToUpload = null;
-
-            if (recordedAudioBlob) {
-                try {
-                    const filePath = `feedback_audio/report_${reportId}_${Date.now()}.webm`;
-                    const { error: uploadError } = await sb.storage
-                        .from('autofix-media')
-                        .upload(filePath, recordedAudioBlob);
-
-                    if (uploadError) throw uploadError;
-
-                    const { data: urlData } = sb.storage.from('autofix-media').getPublicUrl(filePath);
-                    audioUrlToUpload = urlData.publicUrl;
-                } catch(uploadError) {
-                    showError('Failed to upload voice note. Please try again.');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
-                    return;
-                }
-            }
-            
-            const updateData = {
-                approved: JSON.stringify(allApprovedItems),
-                customer_feedback_text: feedbackText || null,
-                customer_feedback_audio: audioUrlToUpload,
-                status: 'Ongoing'
-            };
-
-            const { error } = await sb.from('reports').update(updateData).eq('id', reportId);
-
-            if (error) {
-                showError(`Failed to submit approval: ${error.message}`);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
-                return;
-            }
-            
-            document.getElementById('customer-approval-content').classList.add('hidden');
-            document.getElementById('customer-thank-you').classList.remove('hidden');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const reportIdFromUrl = urlParams.get('report_id');
-            
-            if (reportIdFromUrl) {
-                initializeCustomerView(reportIdFromUrl);
-            } else {
-                 document.getElementById('customer-loading').innerHTML = `<p class="text-red-500 font-bold">Error: No report ID was found in the link.</p>`;
-            }
+        // REPLACE this entire function
+async function submitCustomerApproval() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportId = urlParams.get('report_id');
+    if (!reportId) return showError('Invalid report ID.');
+
+    const submitBtn = document.querySelector('#customer-submit-section button');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span>Submitting...</span>`;
+    
+    // This is the key change: It only gathers what is currently checked.
+    const allApprovedItems = [];
+    document.querySelectorAll('#cust-suggestions-list input[type="checkbox"]:checked').forEach(checkbox => {
+        allApprovedItems.push(checkbox.value);
+    });
+    
+    const feedbackText = document.getElementById('customer-feedback-text').value.trim();
+    let audioUrlToUpload = null;
+
+    if (recordedAudioBlob) {
+        try {
+            const filePath = `feedback_audio/report_${reportId}_${Date.now()}.webm`;
+            const { error: uploadError } = await sb.storage
+                .from('autofix-media')
+                .upload(filePath, recordedAudioBlob);
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = sb.storage.from('autofix-media').getPublicUrl(filePath);
+            audioUrlToUpload = urlData.publicUrl;
+        } catch(uploadError) {
+            showError('Failed to upload voice note. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
+            return;
+        }
+    }
+    
+    const updateData = {
+        approved: JSON.stringify(allApprovedItems),
+        customer_feedback_text: feedbackText || null,
+        customer_feedback_audio: audioUrlToUpload,
+        status: 'Ongoing'
+    };
+
+    const { error } = await sb.from('reports').update(updateData).eq('id', reportId);
+
+    if (error) {
+        showError(`Failed to submit approval: ${error.message}`);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
+        return;
+    }
+    
+    document.getElementById('customer-approval-content').classList.add('hidden');
+    document.getElementById('customer-thank-you').classList.remove('hidden');
+}
         });
     </script>
 </body>
