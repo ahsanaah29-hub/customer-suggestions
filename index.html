@@ -230,64 +230,65 @@ function stopRecording(context = 'customer') {
     }
 }
         
-        async function submitCustomerApproval() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const reportId = urlParams.get('report_id');
-            if (!reportId) return showError('Invalid report ID.');
+        // REPLACE this entire function in your suggestion.html file
+async function submitCustomerApproval() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportId = urlParams.get('report_id');
+    if (!reportId) return showError('Invalid report ID.');
 
-            const submitBtn = document.querySelector('#customer-submit-section button');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `
-                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span>Submitting...</span>`;
-            
-            const allApprovedItems = [];
-            document.querySelectorAll('#cust-suggestions-list input[type="checkbox"]:checked').forEach(checkbox => {
-                allApprovedItems.push(checkbox.value);
-            });
-            
-            const feedbackText = document.getElementById('customer-feedback-text').value.trim();
-            let audioUrlToUpload = null;
+    const submitBtn = document.querySelector('#customer-submit-section button');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span>Submitting...</span>`;
+    
+    // This is the key change: It only gathers the values of the currently checked boxes.
+    const allApprovedItems = [];
+    document.querySelectorAll('#cust-suggestions-list input[type="checkbox"]:checked').forEach(checkbox => {
+        allApprovedItems.push(checkbox.value);
+    });
+    
+    const feedbackText = document.getElementById('customer-feedback-text').value.trim();
+    let audioUrlToUpload = null;
 
-            if (recordedAudioBlob) {
-                try {
-                    const filePath = `feedback_audio/report_${reportId}_${Date.now()}.webm`;
-                    const { error: uploadError } = await sb.storage
-                        .from('autofix-media')
-                        .upload(filePath, recordedAudioBlob);
+    if (recordedAudioBlob) {
+        try {
+            const filePath = `feedback_audio/report_${reportId}_${Date.now()}.webm`;
+            const { error: uploadError } = await sb.storage
+                .from('autofix-media')
+                .upload(filePath, recordedAudioBlob);
 
-                    if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError;
 
-                    const { data: urlData } = sb.storage.from('autofix-media').getPublicUrl(filePath);
-                    audioUrlToUpload = urlData.publicUrl;
-                } catch(uploadError) {
-                    showError('Failed to upload voice note. Please try again.');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
-                    return;
-                }
-            }
-            
-            const updateData = {
-                approved: JSON.stringify(allApprovedItems),
-                customer_feedback_text: feedbackText || null,
-                customer_feedback_audio: audioUrlToUpload,
-                status: 'Ongoing'
-            };
-
-            const { error } = await sb.from('reports').update(updateData).eq('id', reportId);
-
-            if (error) {
-                showError(`Failed to submit approval: ${error.message}`);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
-                return;
-            }
-            
-            document.getElementById('customer-approval-content').classList.add('hidden');
-            document.getElementById('customer-thank-you').classList.remove('hidden');
+            const { data: urlData } = sb.storage.from('autofix-media').getPublicUrl(filePath);
+            audioUrlToUpload = urlData.publicUrl;
+        } catch(uploadError) {
+            showError('Failed to upload voice note. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
+            return;
         }
+    }
+    
+    const updateData = {
+        approved: JSON.stringify(allApprovedItems),
+        customer_feedback_text: feedbackText || null,
+        customer_feedback_audio: audioUrlToUpload,
+        status: 'Ongoing'
+    };
 
+    const { error } = await sb.from('reports').update(updateData).eq('id', reportId);
+
+    if (error) {
+        showError(`Failed to submit approval: ${error.message}`);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span class="material-symbols-outlined">task_alt</span> Submit Approval`;
+        return;
+    }
+    
+    document.getElementById('customer-approval-content').classList.add('hidden');
+    document.getElementById('customer-thank-you').classList.remove('hidden');
+}
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const reportIdFromUrl = urlParams.get('report_id');
@@ -301,6 +302,5 @@ function stopRecording(context = 'customer') {
     </script>
 </body>
 </html>
-
 
 
