@@ -36,6 +36,62 @@
         .form-input { @apply w-full rounded-lg border-[var(--border-color)] text-base shadow-sm transition-colors focus:border-[var(--primary-color)] focus:ring focus:ring-[var(--primary-color)] focus:ring-opacity-50; }
         .btn-primary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-[var(--primary-color)] text-[var(--text-on-primary)] font-bold py-3 px-4 shadow-sm hover:bg-[var(--primary-hover)] transition-all duration-300 transform hover:scale-[1.02]; }
         .btn-secondary { @apply w-full flex justify-center items-center gap-2 rounded-lg bg-gray-600 text-white font-bold py-3 px-4 shadow-sm hover:bg-gray-700 transition-colors; }
+		/* Add this keyframes rule for the pulsing animation */
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.75;
+    }
+    70% {
+        transform: scale(2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+}
+
+/* This class will be toggled by JavaScript to activate the animation */
+.is-recording::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px; /* rounded-full */
+    background-color: #38bdf8; /* sky-400 */
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+/* Add this keyframes rule for the pulsing animation */
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.75;
+    }
+    70% {
+        transform: scale(2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+}
+
+/* This class will be toggled by JavaScript to activate the animation */
+.is-recording::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px; /* rounded-full */
+    background-color: #38bdf8; /* sky-400 */
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
     </style>
 </head>
 <body>
@@ -78,16 +134,18 @@
                 <div class="card">
                     <h2 class="text-xl font-bold mb-3">3. Record a Voice Note (Optional)</h2>
                     <p class="text-sm text-gray-500 -mt-2 mb-4">If it's easier, you can record a voice message for our team.</p>
-                    <div class="flex items-center gap-3">
-    <button id="customer-record-btn" type="button" onclick="startRecording('customer')" class="btn-secondary !w-auto !py-2 !px-3 text-sm flex items-center gap-2">
-        <span class="material-symbols-outlined">mic</span> Record
+					
+                    <div class="flex items-center gap-4">
+    <!-- New single, modern button for customer screen -->
+    <button id="customer-toggle-record-btn" type="button" onclick="toggleRecording('customer')" class="relative w-14 h-14 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+        <span id="customer-record-btn-icon" class="material-symbols-outlined text-3xl">mic</span>
     </button>
-    <button id="customer-stop-record-btn" type="button" onclick="stopRecording('customer')" class="btn-primary !w-auto !py-2 !px-3 text-sm flex items-center gap-2 hidden !bg-red-600">
-        <span class="material-symbols-outlined">stop_circle</span> Stop
-    </button>
+    <!-- Audio playback and status are now next to the button -->
+    <div class="flex-grow">
+        <div id="customer-audio-playback"></div>
+        <p id="recording-status" class="text-xs mt-1 text-gray-500"></p>
+    </div>
 </div>
-<div id="customer-audio-playback" class="mt-3"></div>
-                     <p id="recording-status" class="text-xs text-center mt-2 text-gray-500"></p>
                 </div>
                 <div id="customer-submit-section">
                     <button onclick="submitCustomerApproval()" class="btn-primary">
@@ -115,6 +173,7 @@
         let mediaRecorder;
         let audioChunks = [];
         let recordedAudioBlob = null;
+		let isRecording = false;
 
         function showError(message) {
             const el = document.getElementById('error-message');
@@ -183,8 +242,16 @@
             document.getElementById('customer-loading').style.display = 'none';
             document.getElementById('customer-approval-content').classList.remove('hidden');
         }
-
+	// ADD THIS NEW FUNCTION
+function toggleRecording(context = 'customer') {
+    if (isRecording) {
+        stopRecording(context);
+    } else {
+        startRecording(context);
+    }
+}
        // ADD THESE TWO NEW FUNCTIONS
+// REPLACE your existing startRecording function
 async function startRecording(context = 'customer') {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         showError('Audio recording is not supported on this browser.');
@@ -192,6 +259,7 @@ async function startRecording(context = 'customer') {
     }
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        isRecording = true;
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
         recordedAudioBlob = null;
@@ -204,28 +272,46 @@ async function startRecording(context = 'customer') {
             recordedAudioBlob = new Blob(audioChunks, { 'type' : 'audio/webm' });
             const audioUrl = URL.createObjectURL(recordedAudioBlob);
             const audioPlaybackEl = document.getElementById('customer-audio-playback');
-            audioPlaybackEl.innerHTML = `<audio controls src="${audioUrl}" class="w-full"></audio>`;
+            audioPlaybackEl.innerHTML = `<audio controls src="${audioUrl}" class="w-full h-9"></audio>`;
             stream.getTracks().forEach(track => track.stop()); // Stop mic access
         });
 
         mediaRecorder.start();
-        document.getElementById('customer-record-btn').classList.add('hidden');
-        document.getElementById('customer-stop-record-btn').classList.remove('hidden');
+        
+        // --- UI LOGIC FOR NEW BUTTON ---
+        const recordBtn = document.getElementById('customer-toggle-record-btn');
+        const recordIcon = document.getElementById('customer-record-btn-icon');
+        recordBtn.classList.add('is-recording');
+        recordBtn.classList.remove('bg-red-600');
+        recordBtn.classList.add('bg-sky-500');
+        recordIcon.textContent = 'stop';
+        
         document.getElementById('recording-status').textContent = 'Recording...';
         document.getElementById('customer-audio-playback').innerHTML = ''; // Clear previous playback
     } catch (err) {
+        isRecording = false; // Reset state on error
         showError('Microphone access was denied.');
         console.error("Mic Error:", err);
     }
 }
 
-// REPLACE your existing stopRecording function with this one
+// REPLACE your existing stopRecording function
 function stopRecording(context = 'customer') {
-    if (mediaRecorder && mediaRecorder.state === "recording") {
+    if (mediaRecorder && isRecording) {
         mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Immediately stop the mic
         mediaRecorder.stop();
-        document.getElementById('customer-record-btn').classList.add('hidden'); // Stays hidden to prevent re-record
-        document.getElementById('customer-stop-record-btn').classList.add('hidden');
+        isRecording = false; // Update state
+
+        // --- UI LOGIC FOR NEW BUTTON ---
+        const recordBtn = document.getElementById('customer-toggle-record-btn');
+        const recordIcon = document.getElementById('customer-record-btn-icon');
+        recordBtn.classList.remove('is-recording');
+        recordBtn.classList.remove('bg-sky-500');
+        // Change to gray and disable to prevent re-recording, as per original logic
+        recordBtn.classList.add('bg-gray-400', 'cursor-not-allowed'); 
+        recordIcon.textContent = 'mic_off'; // Use a different icon to show it's done
+        recordBtn.disabled = true; // Disable the button
+
         document.getElementById('recording-status').textContent = 'Recording stopped. Play back audio below.';
     }
 }
@@ -302,5 +388,4 @@ async function submitCustomerApproval() {
     </script>
 </body>
 </html>
-
 
